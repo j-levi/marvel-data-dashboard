@@ -1,3 +1,4 @@
+// Dashboard.jsx
 import React, { useState, useEffect } from 'react'
 import md5 from 'blueimp-md5'
 import SearchBar from './SearchBar'
@@ -16,40 +17,68 @@ const Dashboard = () => {
   const publicKey = import.meta.env.VITE_MARVEL_PUBLIC_KEY
   const privateKey = import.meta.env.VITE_MARVEL_PRIVATE_KEY
 
+  // Log keys (make sure they are not empty; note: logging privateKey partially for security)
+  console.log("publicKey:", publicKey)
+  console.log("privateKey:", privateKey ? privateKey.slice(0, 5) + "..." : "undefined")
+
+  // Use a dynamic timestamp (as a string)
+  const ts = new Date().getTime().toString()
+  console.log("timestamp:", ts)
+
+  // Compute hash: md5(ts + privateKey + publicKey)
+  const hash = md5(ts + privateKey + publicKey)
+
+  // Construct the Marvel API URL
+  const url = `https://gateway.marvel.com/v1/public/characters?limit=20&ts=${ts}&apikey=${publicKey}&hash=${hash}`
+
   useEffect(() => {
     const fetchCharacters = async () => {
       setLoading(true)
-      const ts = new Date().getTime()
-      const hash = md5(ts + privateKey + publicKey)
-      const limit = 20
+      console.log("Fetching data from:", url)
       try {
-        const response = await fetch(
-          `https://gateway.marvel.com/v1/public/characters?limit=${limit}&ts=${ts}&apikey=${publicKey}&hash=${hash}`
-        )
-        const data = await response.json()
+        const res = await fetch(url)
+        if (!res.ok) {
+          let details = ''
+          try {
+            const errorJson = await res.json()
+            details = JSON.stringify(errorJson)
+          } catch (jsonErr) {
+            // If JSON parsing fails, leave details empty
+          }
+          throw new Error(`Marvel API error: ${res.status} - ${details}`)
+        }
+
+        const data = await res.json()
+        if (!data?.data?.results) {
+          throw new Error('Malformed API response')
+        }
+
         setCharacters(data.data.results)
         setFilteredCharacters(data.data.results)
       } catch (err) {
-        console.error(err)
-        setError('Failed to fetch data from Marvel API.')
+        console.error("Fetch error:", err)
+        // Provide a more instructive error message for ECONNREFUSED
+        setError(
+          'Failed to fetch data from Marvel API. Please check your internet connection, ensure that your domain (e.g. http://localhost:5173) is added as an Authorized Referrer in your Marvel Developer account, and verify that your API keys are valid. Check the console for details.'
+        )
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     fetchCharacters()
-  }, [privateKey, publicKey])
+  }, [url])
 
+  // Filter characters based on search query and selected filter letter
   useEffect(() => {
     let filtered = characters
 
-    // Filter by search query (by name)
     if (searchQuery) {
       filtered = filtered.filter(character =>
         character.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
     }
 
-    // Additional filter: filter by first letter of name if selected
     if (filterLetter) {
       filtered = filtered.filter(character =>
         character.name.startsWith(filterLetter)
@@ -59,13 +88,15 @@ const Dashboard = () => {
     setFilteredCharacters(filtered)
   }, [searchQuery, filterLetter, characters])
 
-  // Compute summary statistics: total characters, average comics, and total series
+  // Compute summary statistics
   const totalCharacters = characters.length
   const totalComics = characters.reduce(
     (acc, char) => acc + (char.comics.available || 0),
     0
   )
-  const averageComics = totalCharacters ? (totalComics / totalCharacters).toFixed(2) : 0
+  const averageComics = totalCharacters
+    ? (totalComics / totalCharacters).toFixed(2)
+    : 0
   const totalSeries = characters.reduce(
     (acc, char) => acc + (char.series.available || 0),
     0
@@ -87,12 +118,15 @@ const Dashboard = () => {
           <p>{totalSeries}</p>
         </div>
       </div>
+
       <div className="controls">
         <SearchBar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
         <Filters filterLetter={filterLetter} setFilterLetter={setFilterLetter} />
       </div>
+
       {loading && <p>Loading...</p>}
       {error && <p className="error">{error}</p>}
+
       <div className="card-list">
         {filteredCharacters.map(character => (
           <Card key={character.id} character={character} />
