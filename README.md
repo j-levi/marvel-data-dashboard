@@ -52,10 +52,10 @@ The following **additional** features are implemented:
 
 Here's a walkthrough of the implemented user stories:
 
-<img src='./public/preview1.gif' title='Video Walkthrough' width='' alt='Video Walkthrough' /> 
+<img src='./public/preview11.gif' title='Video Walkthrough' width='' alt='Video Walkthrough' /> 
 
 Here is another clip showing the filter functionality
-<img src='./public/preview2.gif' title='Video Walkthrough' width='' alt='Video Walkthrough' /> 
+<img src='./public/preview22.gif' title='Video Walkthrough' width='' alt='Video Walkthrough' /> 
 
 
 <!-- Replace the above link with your actual GIF URL. -->
